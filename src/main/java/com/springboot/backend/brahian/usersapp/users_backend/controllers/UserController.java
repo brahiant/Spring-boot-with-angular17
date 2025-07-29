@@ -13,8 +13,14 @@ import com.springboot.backend.brahian.usersapp.users_backend.services.UserServic
 
 import java.util.List;
 import java.util.Optional;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
 
 @RestController
+@RequestMapping("/api/users")
 public class UserController {
 
     @Autowired
@@ -34,6 +40,39 @@ public class UserController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Collections.singletonMap("error", "User not found"));
         }
     }
-    
+
+    @PostMapping
+    public ResponseEntity<?> createUser(@RequestBody User user) {
+        User newUser = userService.createUser(user);
+        return ResponseEntity.status(HttpStatus.CREATED).body(newUser);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateUser(@RequestBody User user, @PathVariable Long id) {
+        Optional<User> existingUser = userService.getUserById(id);
+        if (existingUser.isPresent()) {
+            User userToUpdate = existingUser.get();
+            userToUpdate.setName(user.getName());
+            userToUpdate.setLastname(user.getLastname());
+            userToUpdate.setUsername(user.getUsername());
+            userToUpdate.setEmail(user.getEmail());
+            userToUpdate.setPassword(user.getPassword());          
+            User updatedUser = userService.updateUser(userToUpdate);
+            return ResponseEntity.status(HttpStatus.OK).body(updatedUser);
+        } else {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Collections.singletonMap("error", "Usuario no encontrado"));
+        }
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteUser(@PathVariable Long id) {
+        Optional<User> existingUser = userService.getUserById(id);
+        if (existingUser.isPresent()) {
+            userService.deleteById(id);
+            return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+        } else {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Collections.singletonMap("error", "Usuario no encontrado"));
+        }
+    }
 
 }
