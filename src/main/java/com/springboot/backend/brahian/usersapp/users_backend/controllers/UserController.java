@@ -20,6 +20,8 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.validation.BindingResult;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import java.util.Map;
 import java.util.HashMap;
 import jakarta.validation.Valid;
@@ -35,6 +37,11 @@ public class UserController {
     @GetMapping
     public List<User> getAllUsers() {
         return userService.getAllUsers();
+    }
+
+    @GetMapping("/page/{page}")
+    public Page<User> getAllUsers(@PathVariable Integer page) {
+        return userService.getAllUsers(PageRequest.of(page, 4));
     }
 
     @GetMapping("/{id}")
