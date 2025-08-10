@@ -14,77 +14,142 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.DatabindException;
 import com.fasterxml.jackson.core.exc.StreamReadException;
 import java.io.IOException;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import org.springframework.security.core.AuthenticationException;
+import io.jsonwebtoken.Jwts;
+import java.util.Date;
+import static com.springboot.backend.brahian.usersapp.users_backend.auth.TokenJwtConfig.*;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.Collection;
+import org.springframework.security.core.GrantedAuthority;
+import io.jsonwebtoken.Claims;
 
 /**
- * Filtro personalizado para la autenticación JWT
- * Este filtro intercepta las peticiones de login y procesa las credenciales enviadas en JSON
- * Extiende de UsernamePasswordAuthenticationFilter que es el filtro estándar de Spring Security
+ * Filtro de autenticación JWT que extiende UsernamePasswordAuthenticationFilter.
+ * Este filtro se encarga de procesar las solicitudes de autenticación y generar tokens JWT
+ * cuando la autenticación es exitosa.
  */
 public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilter{
 
-    // AuthenticationManager es el responsable de validar las credenciales contra la base de datos
-    // Internamente usa UserDetailsService para cargar los datos del usuario
+    /** Gestor de autenticación que valida las credenciales del usuario */
     private AuthenticationManager authenticationManager;
 
     /**
-     * Constructor que inyecta el AuthenticationManager
-     * @param authenticationManager - Manejador que coordina el proceso de autenticación
+     * Constructor que recibe el AuthenticationManager para validar credenciales
+     * @param authenticationManager Gestor de autenticación de Spring Security
      */
     public JwtAuthenticationFilter(AuthenticationManager authenticationManager) {
         this.authenticationManager = authenticationManager;
     }
 
     /**
-     * Método que se ejecuta cuando llega una petición de login (POST /login por defecto)
-     * Su trabajo es extraer las credenciales del usuario de la petición HTTP
+     * Método que se ejecuta cuando se intenta autenticar un usuario.
+     * Lee las credenciales del cuerpo de la solicitud HTTP y crea un token de autenticación.
      * 
-     * FLUJO DE FUNCIONAMIENTO:
-     * 1. Recibe la petición HTTP con credenciales en JSON
-     * 2. Extrae username y password del JSON
-     * 3. Crea un token de autenticación
-     * 4. Delega al AuthenticationManager para validar las credenciales
-     * 5. El AuthenticationManager usa UserDetailsService para buscar el usuario en BD
-     * 6. Si las credenciales son válidas, retorna un objeto Authentication
+     * @param request Solicitud HTTP entrante
+     * @param response Respuesta HTTP de salida
+     * @return Objeto Authentication con el resultado de la autenticación
+     * @throws AuthenticationException Si la autenticación falla
      */
     @Override
-    public Authentication attemptAuthentication(HttpServletRequest request, HttpServletResponse response) {
-        // Variables para almacenar las credenciales extraídas del JSON
+    public Authentication attemptAuthentication(HttpServletRequest request, HttpServletResponse response)
+            throws AuthenticationException {
+
         String username = null;
         String password = null;
-        User user = null;
-        
+
         try {
-            // PASO 1: Leer el JSON del cuerpo de la petición HTTP
-            // ObjectMapper convierte el JSON en un objeto User
-            // Por ejemplo: {"username": "admin", "password": "12345"}
-            user = new ObjectMapper().readValue(request.getInputStream(), User.class);
-            
-            // PASO 2: Extraer username y password del objeto User
+            // Lee el cuerpo de la solicitud HTTP y lo convierte a un objeto User
+            // para extraer el nombre de usuario y contraseña
+            User user = new ObjectMapper().readValue(request.getInputStream(), User.class);
             username = user.getUsername();
             password = user.getPassword();
-
         } catch (StreamReadException e) {
-            // Error al leer el stream de la petición
             e.printStackTrace();
         } catch (DatabindException e) {
-            // Error al convertir el JSON al objeto User
             e.printStackTrace();
         } catch (IOException e) {
-            // Error general de entrada/salida
             e.printStackTrace();
         }
-        
-        // PASO 3: Crear un token de autenticación con las credenciales
-        // Este token aún NO está autenticado, solo contiene las credenciales
-        UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(username, password);
-        
-        // PASO 4: Delegar al AuthenticationManager para validar las credenciales
-        // AQUÍ ES DONDE SE CONECTA CON UserDetailsService:
-        // 1. authenticationManager.authenticate() busca un AuthenticationProvider
-        // 2. El provider usa UserDetailsService.loadUserByUsername() para buscar el usuario en BD
-        // 3. Compara la contraseña enviada con la almacenada en BD
-        // 4. Si coinciden, retorna un Authentication exitoso
-        // 5. Si no coinciden, lanza una excepción
-        return authenticationManager.authenticate(authToken);
+
+        // Crea un token de autenticación con las credenciales extraídas
+        UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(username,
+                password);
+        // Delega la autenticación al AuthenticationManager
+        return this.authenticationManager.authenticate(authenticationToken);
     }
+
+    /**
+     * Método que se ejecuta cuando la autenticación es exitosa.
+     * Genera un token JWT con la información del usuario autenticado y lo incluye
+     * en la respuesta HTTP.
+     * 
+     * @param request Solicitud HTTP original
+     * @param response Respuesta HTTP donde se incluirá el token JWT
+     * @param chain Cadena de filtros
+     * @param authResult Resultado exitoso de la autenticación
+     * @throws IOException Si hay error de entrada/salida
+     * @throws ServletException Si hay error del servlet
+     */
+    @Override
+    protected void successfulAuthentication(HttpServletRequest request, HttpServletResponse response, FilterChain chain,
+            Authentication authResult) throws IOException, ServletException {
+
+        // Obtiene el usuario autenticado del resultado de la autenticación
+        org.springframework.security.core.userdetails.User user = (org.springframework.security.core.userdetails.User) authResult
+                .getPrincipal();
+        String username = user.getUsername();
+        // Obtiene los roles/autoridades del usuario autenticado
+        Collection<? extends GrantedAuthority> roles = authResult.getAuthorities();
+
+        // Crea los claims (reclamaciones) del token JWT
+        Claims claims = Jwts
+                .claims()
+                .add("authorities", new ObjectMapper().writeValueAsString(roles)) // Convierte roles a JSON
+                .add("username", username) // Agrega el nombre de usuario
+                .build();
+
+        // Construye el token JWT con toda la información necesaria
+        String jwt = Jwts.builder()
+                .subject(username) // Sujeto del token (nombre de usuario)
+                .claims(claims) // Claims personalizados (roles y username)
+                .signWith(SECRET_KEY) // Firma el token con la clave secreta
+                .issuedAt(new Date()) // Fecha de emisión
+                .expiration(new Date(System.currentTimeMillis() + 3600000)) // Expira en 1 hora (3600000 ms)
+                .compact(); // Genera el token compacto
+
+        // Agrega el token JWT al header de autorización de la respuesta
+        response.addHeader(HEADER_AUTHORIZATION, PREFIX_TOKEN + jwt);
+
+        // Crea el cuerpo de la respuesta con información del login exitoso
+        Map<String, String> body = new HashMap<>();
+        body.put("token", jwt); // Token JWT generado
+        body.put("username", username); // Nombre de usuario
+        body.put("message", String.format("Hola %s has iniciado sesion con exito", username)); // Mensaje de bienvenida
+
+        // Escribe la respuesta JSON en el cuerpo de la respuesta HTTP
+        response.getWriter().write(new ObjectMapper().writeValueAsString(body));
+        response.setContentType(CONTENT_TYPE); // Establece el tipo de contenido como JSON
+        response.setStatus(200); // Establece el código de estado HTTP como 200 (OK)
+    }
+
+    /**
+     * Método que se ejecuta cuando la autenticación falla.
+     * Por defecto, Spring Security maneja la respuesta de error.
+     * 
+     * @param request Solicitud HTTP original
+     * @param response Respuesta HTTP donde se incluirá el error
+     * @param failed Excepción que causó el fallo en la autenticación
+     * @throws IOException Si hay error de entrada/salida
+     * @throws ServletException Si hay error del servlet
+     */
+    @Override
+    protected void unsuccessfulAuthentication(HttpServletRequest request, HttpServletResponse response,
+            AuthenticationException failed) throws IOException, ServletException {
+        // La implementación por defecto de Spring Security maneja la respuesta de error
+        // Se puede personalizar aquí si se desea un comportamiento específico
+    }
+
 }
