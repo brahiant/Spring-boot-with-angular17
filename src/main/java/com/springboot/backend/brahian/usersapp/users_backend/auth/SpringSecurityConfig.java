@@ -12,6 +12,7 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import com.springboot.backend.brahian.usersapp.users_backend.auth.filter.JwtValidationFilter;
 
 /**
  * Configuración principal de Spring Security para la aplicación de usuarios.
@@ -72,6 +73,7 @@ public class SpringSecurityConfig {
                 .anyRequest().authenticated())
                 // Agrega el filtro JWT personalizado para la autenticación
                 .addFilter(new JwtAuthenticationFilter(authenticationManager()))
+                .addFilter(new JwtValidationFilter(authenticationManager()))
                 // Deshabilita CSRF ya que se usa JWT (stateless)
                 .csrf(config -> config.disable())
                 // Configura la gestión de sesiones como stateless (sin estado)

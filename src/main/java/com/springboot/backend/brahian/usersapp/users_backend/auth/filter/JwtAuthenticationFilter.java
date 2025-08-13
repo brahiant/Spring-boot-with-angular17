@@ -150,6 +150,17 @@ public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilte
             AuthenticationException failed) throws IOException, ServletException {
         // La implementación por defecto de Spring Security maneja la respuesta de error
         // Se puede personalizar aquí si se desea un comportamiento específico
+        Map<String, Object> errorDetails = new HashMap<>();
+        errorDetails.put("timestamp", new Date());
+        errorDetails.put("status", HttpServletResponse.SC_UNAUTHORIZED);
+        errorDetails.put("error", "Unauthorized");
+        errorDetails.put("message", failed.getMessage());
+        errorDetails.put("path", request.getServletPath());
+
+        response.getWriter().write(new ObjectMapper().writeValueAsString(errorDetails));
+        response.setContentType(CONTENT_TYPE);
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        
     }
 
 }
