@@ -10,9 +10,14 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.util.ArrayList;
+import com.springboot.backend.brahian.usersapp.users_backend.entities.Role;
 import com.springboot.backend.brahian.usersapp.users_backend.entities.User;
+import com.springboot.backend.brahian.usersapp.users_backend.models.IUser;
 import com.springboot.backend.brahian.usersapp.users_backend.models.UserRequest;
+import com.springboot.backend.brahian.usersapp.users_backend.repositories.RoleRepository;
 import com.springboot.backend.brahian.usersapp.users_backend.repositories.UserRepository;
+
 
 
 @Service
@@ -20,6 +25,9 @@ public class UserServiceImpl implements UserService {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private RoleRepository roleRepository;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -45,6 +53,8 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public User createUser(User user) {
+        List<Role> roles = setUserRoles(user);
+        user.setRoles(roles);
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         return userRepository.save(user);
     }
@@ -58,7 +68,9 @@ public class UserServiceImpl implements UserService {
             userToUpdate.setName(userRequest.getName());
             userToUpdate.setLastname(userRequest.getLastname());
             userToUpdate.setUsername(userRequest.getUsername());
-            userToUpdate.setEmail(userRequest.getEmail());        
+            userToUpdate.setEmail(userRequest.getEmail());  
+            List<Role> roles = setUserRoles(userRequest);
+            userToUpdate.setRoles(roles);
             return Optional.of(userRepository.save(userToUpdate));
         }
         return Optional.empty();
@@ -68,5 +80,16 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public void deleteById(Long id) {
         userRepository.deleteById(id);
+    }
+
+    private List<Role> setUserRoles(IUser user) {
+        List<Role> roles = new ArrayList<>();
+        Optional<Role> optionalRole = roleRepository.findByName("ROLE_USER");
+        optionalRole.ifPresent(roles::add);
+        if (user.isAdmin()) {
+            Optional<Role> optionalAdminRole = roleRepository.findByName("ROLE_ADMIN");
+            optionalAdminRole.ifPresent(roles::add);
+        }
+        return roles;
     }
 }

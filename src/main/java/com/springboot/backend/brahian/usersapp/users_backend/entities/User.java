@@ -5,6 +5,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import lombok.Data;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Email;
@@ -20,11 +21,14 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import java.util.ArrayList;
 import jakarta.persistence.UniqueConstraint;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonProperty.Access;
+import com.springboot.backend.brahian.usersapp.users_backend.models.IUser;
 
 @Entity
 @Table(name = "users")
 @Data
-public class User {
+public class User implements IUser {
 
     public User() {
         this.roles = new ArrayList<>();
@@ -50,6 +54,10 @@ public class User {
 
     @NotEmpty
     private String password;
+
+    @Transient
+    @JsonProperty(access = Access.WRITE_ONLY)
+    private boolean admin;
 
     // Esta anotación evita problemas de serialización JSON con Hibernate
     // Ignora propiedades técnicas de Hibernate que no queremos mostrar en JSON

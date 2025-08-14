@@ -7,7 +7,7 @@ import jakarta.validation.constraints.Email;
 import lombok.Data;
 
 @Data
-public class UserRequest {
+public class UserRequest implements IUser {
     @NotEmpty
     private String name;
 
@@ -21,4 +21,6 @@ public class UserRequest {
     @NotEmpty
     @Email
     private String email;
+
+    private boolean admin;
 }
