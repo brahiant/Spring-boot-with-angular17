@@ -8,15 +8,21 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.springboot.backend.brahian.usersapp.users_backend.entities.User;
+import com.springboot.backend.brahian.usersapp.users_backend.models.UserRequest;
 import com.springboot.backend.brahian.usersapp.users_backend.repositories.UserRepository;
+
 
 @Service
 public class UserServiceImpl implements UserService {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     @Override
     @Transactional(readOnly = true)
@@ -39,13 +45,23 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public User createUser(User user) {
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
         return userRepository.save(user);
     }
 
     @Override
     @Transactional
-    public User updateUser(User user) {
-        return userRepository.save(user);
+    public Optional<User> updateUser(UserRequest userRequest, Long id) {
+        Optional<User> existingUser = getUserById(id);
+        if (existingUser.isPresent()) {
+            User userToUpdate = existingUser.get();
+            userToUpdate.setName(userRequest.getName());
+            userToUpdate.setLastname(userRequest.getLastname());
+            userToUpdate.setUsername(userRequest.getUsername());
+            userToUpdate.setEmail(userRequest.getEmail());        
+            return Optional.of(userRepository.save(userToUpdate));
+        }
+        return Optional.empty();
     }
 
     @Override

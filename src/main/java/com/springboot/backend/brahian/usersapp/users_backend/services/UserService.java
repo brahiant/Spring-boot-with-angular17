@@ -8,6 +8,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 import com.springboot.backend.brahian.usersapp.users_backend.entities.User;
+import com.springboot.backend.brahian.usersapp.users_backend.models.UserRequest;
 
 @Service
 public interface UserService {
@@ -16,7 +17,7 @@ public interface UserService {
     Page<User> getAllUsers(Pageable pageable);
     Optional<User> getUserById(Long id);
     User createUser(User user);
-    User updateUser(User user);
+    Optional<User> updateUser(UserRequest userRequest, Long id);
     void deleteById(Long id);
 
 }

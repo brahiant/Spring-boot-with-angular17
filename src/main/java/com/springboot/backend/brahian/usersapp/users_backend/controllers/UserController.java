@@ -25,6 +25,7 @@ import org.springframework.data.domain.PageRequest;
 import java.util.Map;
 import java.util.HashMap;
 import jakarta.validation.Valid;
+import com.springboot.backend.brahian.usersapp.users_backend.models.UserRequest;
 
 @CrossOrigin(origins = "http://localhost:4200")
 @RestController
@@ -68,7 +69,7 @@ public class UserController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<?> updateUser(@Valid @RequestBody User user, BindingResult bindingResult, @PathVariable Long id) {
+    public ResponseEntity<?> updateUser(@Valid @RequestBody UserRequest userRequest, BindingResult bindingResult, @PathVariable Long id) {
         if (bindingResult.hasErrors()) {
             Map<String, String> errors = new HashMap<>();
             bindingResult.getFieldErrors().forEach(err -> {
@@ -76,18 +77,11 @@ public class UserController {
             });
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errors);
         }
-        Optional<User> existingUser = userService.getUserById(id);
-        if (existingUser.isPresent()) {
-            User userToUpdate = existingUser.get();
-            userToUpdate.setName(user.getName());
-            userToUpdate.setLastname(user.getLastname());
-            userToUpdate.setUsername(user.getUsername());
-            userToUpdate.setEmail(user.getEmail());
-            userToUpdate.setPassword(user.getPassword());          
-            User updatedUser = userService.updateUser(userToUpdate);
-            return ResponseEntity.status(HttpStatus.OK).body(updatedUser);
+        Optional<User> updatedUser = userService.updateUser(userRequest, id);
+        if (updatedUser.isPresent()) {
+            return ResponseEntity.status(HttpStatus.OK).body(updatedUser.get());
         } else {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Collections.singletonMap("error", "Usuario no encontrado"));
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Collections.singletonMap("error", "User not found"));
         }
     }
 
